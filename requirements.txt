@@ -11,3 +11,4 @@ torch==2.2.2
 torchaudio==2.2.2
 torchvision==0.17.2
 typing_extensions==4.11.0
+tdqm==4.66.2
