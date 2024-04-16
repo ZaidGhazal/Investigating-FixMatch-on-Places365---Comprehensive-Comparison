@@ -61,6 +61,8 @@ def main(start_epoch, epochs, arch, nesterov=True, lr=0.03, momentum=0.9, weight
     train_lab_loader, train_unlab_loader = get_train_data_loaders()
     val_loader, test_loader = get_val_and_test_data_loaders()
     # pbar = tqdm(range(epochs), position=0, leave=True, desc="Training")
+
+    best_prec1 = 0
     for epoch in range(start_epoch, epochs):
         adjust_learning_rate(optimizer, epoch, lr)
 
@@ -74,7 +76,7 @@ def main(start_epoch, epochs, arch, nesterov=True, lr=0.03, momentum=0.9, weight
             epoch=epoch,
             device=device,
             lambda_u=1.0,
-            tau=0.8,
+            tau=0.95,
         )
 
         # # evaluate on validation set
@@ -106,7 +108,7 @@ def adjust_learning_rate(optimizer, epoch, lr):
 
 if __name__ == '__main__':
     main(start_epoch=0, 
-         epochs=5, 
+         epochs=20, 
          arch='alexnet', 
          lr=0.03, 
          momentum=0.9, 

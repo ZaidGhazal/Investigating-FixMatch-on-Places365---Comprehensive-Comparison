@@ -135,12 +135,12 @@ def prepare_val_and_test_data_loaders(batch_size=64, split_ratio=0.5, download=F
 
     val_loader = DataLoader(
         val_dataset, batch_size=batch_size,
-        shuffle=False, num_workers=4,
+        shuffle=False
     )
 
     test_loader = DataLoader(
         test_dataset, batch_size=batch_size,
-        shuffle=False, num_workers=4,
+        shuffle=False
     )
 
     metadata = {
@@ -189,11 +189,11 @@ def get_val_and_test_data_loaders(directory='data/validation_loaders'):
 
 
 if __name__ == "__main__":
-    prepare_train_data_loaders()
+    # prepare_train_data_loaders(split_ratio=0.8, u=7)
     # train_lab_loader, train_unlab_loader = get_train_data_loaders()
     # print(len(train_lab_loader))
     # print(len(train_unlab_loader))
-    # prepare_val_and_test_data_loaders() 
+    prepare_val_and_test_data_loaders() 
     # val_loader, test_loader = get_val_and_test_data_loaders()
     # print(len(val_loader))
     # print(len(test_loader))

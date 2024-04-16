@@ -65,8 +65,6 @@ def train(train_lab_loader, train_unlab_loader,  model, criterion, optimizer, ep
     model.train()
 
     end = time.time()
-    ## Loop over the lab and unlab loaders
-    # for i, (input_lab, target_lab), (input_unlab, target_unlab) in enumerate(zip(train_lab_loader, train_unlab_loader)):
     min_len = min(len(train_lab_loader), len(train_unlab_loader))
     # pbar = tqdm(min_len, position=0, leave=True, desc='Training - Epoch {}'.format(epoch))
     for i in range(min_len):
@@ -85,17 +83,19 @@ def train(train_lab_loader, train_unlab_loader,  model, criterion, optimizer, ep
         input_unlab = input_unlab.to(device)
         # print(f"----Data transfer to device time: {time.time() - start}----")
         
-        start = time.time()
+        # start = time.time()
         input_lab_var = torch.autograd.Variable(input_lab)
         target_lab_var = torch.autograd.Variable(target_lab)
-        input_unlab = torch.autograd.Variable(input_unlab)
+        input_unlab_var = torch.autograd.Variable(input_unlab)
         # print(f"----Variable creation time: {time.time() - start}----")
 
         # Compute total loss
         start = time.time()
         loss_value, y_pred_lab = compute_total_loss(
             model=model, x_batch_lab=input_lab_var, y_batch_lab=target_lab_var, loss_fn=criterion,
-            x_batch_unlab=input_unlab, tau=tau, lambda_u=lambda_u)
+            x_batch_unlab=input_unlab_var, tau=tau, lambda_u=lambda_u)
+        # y_pred_lab = model(input_lab_var)
+        # loss_value = criterion(y_pred_lab, target_lab_var)
         # print(f"---- Compute total loss time: {time.time() - start} -----")
 
         total_inputs_size = input_lab.size(0) + input_unlab.size(0)
@@ -121,67 +121,15 @@ def train(train_lab_loader, train_unlab_loader,  model, criterion, optimizer, ep
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if i % 1 == 0:
+        if i % 2 == 0:
             print('Epoch: [{0}][{1}/{2}]\t'
                     'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                     'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                     'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                     'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
                     'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                    epoch, i, len(train_lab_loader) + len(train_unlab_loader), batch_time=batch_time,
+                    epoch, i, min_len, batch_time=batch_time,
                     data_time=data_time, loss=losses, top1=top1, top5=top5))
     #     pbar.update(1)
     # pbar.close()
             
-
-
-
-
-
-
-# def train(train_loader, model, criterion, optimizer, epoch, device):
-#     batch_time = AverageMeter()
-#     data_time = AverageMeter()
-#     losses = AverageMeter()
-#     top1 = AverageMeter()
-#     top5 = AverageMeter()
-
-#     # switch to train mode
-#     model.train()
-
-#     end = time.time()
-#     for i, (input, target) in enumerate(train_loader):
-#         # measure data loading time
-#         data_time.update(time.time() - end)
-
-#         target = target.to(device)
-#         input_var = torch.autograd.Variable(input)
-#         target_var = torch.autograd.Variable(target)
-#         # compute output
-#         output = model(input_var)
-#         loss = criterion(output, target_var)
-
-#         # measure accuracy and record loss
-#         prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
-#         losses.update(loss.data[0], input.size(0))
-#         top1.update(prec1[0], input.size(0))
-#         top5.update(prec5[0], input.size(0))
-
-#         # compute gradient and do SGD step
-#         optimizer.zero_grad()
-#         loss.backward()
-#         optimizer.step()
-
-#         # measure elapsed time
-#         batch_time.update(time.time() - end)
-#         end = time.time()
-
-#         if i % 5 == 0:
-#             print('Epoch: [{0}][{1}/{2}]\t'
-#                     'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-#                     'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-#                     'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-#                     'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-#                     'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-#                     epoch, i, len(train_loader), batch_time=batch_time,
-#                     data_time=data_time, loss=losses, top1=top1, top5=top5))
