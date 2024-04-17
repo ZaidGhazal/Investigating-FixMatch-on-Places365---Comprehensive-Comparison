@@ -1,11 +1,12 @@
 import time
 
+import pandas as pd
 import torch
 
 from src.utils import AverageMeter, accuracy
 
 
-def validate(val_loader, model, criterion, device):
+def validate(epoch, val_loader, model, criterion, device, results_log, path_to_logs):
     batch_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
@@ -34,6 +35,17 @@ def validate(val_loader, model, criterion, device):
             batch_time.update(time.time() - end)
             end = time.time()
 
+            results_log = pd.concat([results_log, pd.DataFrame({
+                'epoch': epoch,
+                'step': f"{i}/{len(val_loader)}",
+                'val_loss': losses.val,
+                'val_acc_top1': top1.val,
+                'val_acc_top5': top5.val,
+                'avg_val_loss': losses.avg,
+                'avg_val_acc_top1': top1.avg,
+                'avg_val_acc_top5': top5.avg
+            }, index=[0])], ignore_index=True)
+
             if i % 5 == 0:
                 print('Test: [{0}/{1}]\t'
                     'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
@@ -45,5 +57,7 @@ def validate(val_loader, model, criterion, device):
 
         print(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'
             .format(top1=top1, top5=top5))
+        
+        results_log.to_csv(f'{path_to_logs}/validation_results.csv', index=False)
 
-        return top1.avg
+        return top5.avg

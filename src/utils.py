@@ -1,6 +1,8 @@
 import random
+
 import torch
 import torchvision.transforms.functional as TF
+
 
 # Define a function that weakly augments the images
 def weak_augment(images):
@@ -25,6 +27,7 @@ def create_pseudo_labels(model, images, threshold):
     outputs = model(images)
     probabilities = torch.softmax(outputs, dim=1) # Convert logits to probabilities
     max_probs, max_indexes = torch.max(probabilities, dim=1)
+    # print(f"Max probsw: {max_probs}")
     
     pseudo_labels = torch.where(max_probs > threshold, max_indexes, torch.tensor(-1).to(max_indexes.device))
     return pseudo_labels
