@@ -1,7 +1,7 @@
 import os
 import shutil
-import time
 
+import pandas as pd
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
@@ -26,22 +26,29 @@ def main(start_epoch, epochs, arch, nesterov=True, lr=0.03, momentum=0.9, weight
    
     if arch.lower().startswith('wideresnet'):
         model  = wideresnet.resnet152(pretrained=True, num_classes=num_classes)
-    else:
-        model = models.__dict__[arch](num_classes=num_classes)
+        
+    elif arch.lower().startswith('alexnet'):
+        model = models.__dict__[arch](weights=models.AlexNet_Weights.DEFAULT)
+        print(model)
+        model.classifier[6] = nn.Linear(model.classifier[6].in_features, num_classes)
+
 
     if arch.lower().startswith('alexnet') or arch.lower().startswith('vgg'):
         model.features = torch.nn.DataParallel(model.features)
         model.to(device)
     else:
         model = torch.nn.DataParallel(model).to(device)
-    print (model)
+    model = model.to(device)
+    print(model)
+    for param in model.features.parameters():
+        param.requires_grad = False
     # optionally resume from a checkpoint
     if resume:
         if os.path.isfile(resume):
             print("=> loading checkpoint '{}'".format(resume))
             checkpoint = torch.load(resume)
             start_epoch = checkpoint['epoch']
-            best_prec1 = checkpoint['best_prec1']
+            best_prec5 = checkpoint['best_prec5']
             model.load_state_dict(checkpoint['state_dict'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(resume, checkpoint['epoch']))
@@ -56,14 +63,25 @@ def main(start_epoch, epochs, arch, nesterov=True, lr=0.03, momentum=0.9, weight
                                 lr=lr,
                                 momentum=momentum,
                                 weight_decay=weight_decay,
-                                nesterov=nesterov)
+                                nesterov=nesterov
+                                )
 
     train_lab_loader, train_unlab_loader = get_train_data_loaders()
     val_loader, test_loader = get_val_and_test_data_loaders()
     # pbar = tqdm(range(epochs), position=0, leave=True, desc="Training")
+
+    best_prec5 = 0
+    training_results = pd.DataFrame()
+    validation_results = pd.DataFrame()
+    datetime = str(pd.Timestamp.now())[:-7]
+    path_to_logs = f'src/logs/run_at_{datetime}'
+    os.makedirs(path_to_logs, exist_ok=True)
+
     for epoch in range(start_epoch, epochs):
         adjust_learning_rate(optimizer, epoch, lr)
 
+        training_results = pd.read_csv(f'{path_to_logs}/training_results.csv') if os.path.exists(f'{path_to_logs}/training_results.csv') else pd.DataFrame()
+        validation_results = pd.read_csv(f'{path_to_logs}/validation_results.csv') if os.path.exists(f'{path_to_logs}/validation_results.csv') else pd.DataFrame()
         # train for one epoch
         train.train(
             train_lab_loader=train_lab_loader,
@@ -74,20 +92,27 @@ def main(start_epoch, epochs, arch, nesterov=True, lr=0.03, momentum=0.9, weight
             epoch=epoch,
             device=device,
             lambda_u=1.0,
-            tau=0.8,
+            tau=0.75,
+            results_log=training_results,
+            path_to_logs=path_to_logs,
+            only_lab=False
         )
 
         # # evaluate on validation set
-        prec1 = validate(val_loader, model, criterion, device=device)
+        try:
+            prec5 = validate(epoch, val_loader, model, criterion, device=device, results_log=validation_results, path_to_logs=path_to_logs)
+        except Exception as e:
+            print(f"Error in Validation: {e}")
+            continue
 
-        # remember best prec@1 and save checkpoint
-        is_best = prec1 > best_prec1
-        best_prec1 = max(prec1, best_prec1)
+        # remember best prec@5 and save checkpoint
+        is_best = prec5 > best_prec5
+        best_prec5 = max(prec5, best_prec5)
         save_checkpoint({
             'epoch': epoch + 1,
             'arch': arch,
             'state_dict': model.state_dict(),
-            'best_prec1': best_prec1,
+            'best_prec5': best_prec5,
         }, is_best, arch.lower())
 
         # pbar.update(1)
@@ -106,10 +131,10 @@ def adjust_learning_rate(optimizer, epoch, lr):
 
 if __name__ == '__main__':
     main(start_epoch=0, 
-         epochs=5, 
+         epochs=20, 
          arch='alexnet', 
          lr=0.03, 
-         momentum=0.9, 
+         momentum=0.5, 
          weight_decay=0.0005, 
          batch_size=64, 
          num_classes=365, 
